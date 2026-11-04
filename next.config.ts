@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 // Built as a static site (no server): `npm run build` writes plain files to ./out.
-// On GitHub Pages the site lives under /<repo>, which the deploy workflow passes in.
+// Set NEXT_PUBLIC_BASE_PATH only when the site is served from a sub-path (e.g. /app).
 const nextConfig: NextConfig = {
   output: "export",
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || undefined,

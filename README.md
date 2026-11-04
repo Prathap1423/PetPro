@@ -2,7 +2,7 @@
 
 A private, mobile-first web app for tracking your personal gold jewellery: photos, weights (grams ⇄ sovereigns), purchase details, and an estimated current value.
 
-**Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS · browser storage (IndexedDB), deployed as a static site on GitHub Pages · Recharts (Phase 2) · Lucide.
+**Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS · browser storage (IndexedDB), deployed as a static site on Zoho Catalyst Slate · Recharts (Phase 2) · Lucide.
 
 ## Status
 
@@ -12,24 +12,30 @@ A private, mobile-first web app for tracking your personal gold jewellery: photo
 | 2 | Charts, transaction history, mark sold/gifted/exchanged, reports (PDF/Excel/CSV) | Not started |
 | 3 | Tamil/English UI, CSV import, backups, live-rate API, anniversaries | Not started |
 
-## Using it
+## Hosting (Zoho Catalyst Slate)
 
-Open **https://prathap1423.github.io/PetPro/**. Nothing to install or start, and no login.
+The app builds to a plain static site, so there is no server to run and no login. Slate deploys it from GitHub on every push to `master`. Slate project settings:
 
-Every push to `master` rebuilds and publishes the site (`.github/workflows/pages.yml`). One-time setup: in the GitHub repo, go to **Settings → Pages** and set **Source** to **GitHub Actions**.
+| Setting | Value |
+|---|---|
+| Framework | Next.js (static export) |
+| Root directory | `/` |
+| Install command | `npm ci` |
+| Build command | `npm run build` |
+| Output directory | `out` |
 
 ## Where the data lives
 
 Everything (items, rates, photos, bills) is saved **in the browser you use**, in IndexedDB. Nothing is uploaded anywhere. That means:
 
 - Each browser and device has its own separate vault: your phone and laptop do not share data.
-- Clearing the site's data or browsing history for github.io deletes the vault.
+- Clearing the site's data or browsing history for the site deletes the vault.
 - Private/incognito windows start empty and forget everything when closed.
 
 ## Developing
 
 `npm install && npm run dev`, then open http://localhost:3000.
-`npm run build` writes the static site to `out/` (set `NEXT_PUBLIC_BASE_PATH=/PetPro` to match GitHub Pages).
+`npm run build` writes the static site to `out/`. Set `NEXT_PUBLIC_BASE_PATH` only if the site is served from a sub-path (for example `/app`).
 
 Scripts: `npm run dev | build | typecheck | test`.
 
