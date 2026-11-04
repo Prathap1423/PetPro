@@ -2,7 +2,6 @@ import type { Category, JewelleryStatus, Purity } from "@/lib/gold";
 
 export interface Jewellery {
   id: string;
-  user_id: string;
   name: string;
   category: Category;
   purchase_date: string;

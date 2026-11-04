@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { deleteJewellery } from "@/app/actions/jewellery";
+import { deleteJewellery } from "@/lib/actions/jewellery";
 import { Button } from "@/components/ui/button";
 
 export function DeleteButton({ id, name }: { id: string; name: string }) {
@@ -20,7 +20,6 @@ export function DeleteButton({ id, name }: { id: string; name: string }) {
     ref.current?.close();
     toast.success("Jewellery deleted");
     router.push("/collection");
-    router.refresh();
   };
 
   return (

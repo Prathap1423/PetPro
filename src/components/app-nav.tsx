@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gem, LayoutDashboard, LineChart, LogOut, Plus } from "lucide-react";
+import { Gem, LayoutDashboard, LineChart, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { signOut } from "@/app/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const links = [
@@ -13,7 +12,7 @@ const links = [
   { href: "/rates", label: "Gold Rates", icon: LineChart },
 ];
 
-export function AppNav({ name }: { name: string }) {
+export function AppNav() {
   const path = usePathname();
   const active = (href: string) => path === href || path.startsWith(href + "/");
   return (
@@ -34,22 +33,15 @@ export function AppNav({ name }: { name: string }) {
             <Plus className="h-5 w-5" />Add Gold
           </Link>
         </nav>
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <span className="truncate text-sm text-muted-foreground">{name}</span>
-          <div className="flex">
-            <ThemeToggle />
-            <form action={signOut}><button aria-label="Sign out" className="grid h-11 w-11 place-items-center rounded-md hover:bg-muted"><LogOut className="h-5 w-5" /></button></form>
-          </div>
+        <div className="flex justify-end border-t border-border pt-3">
+          <ThemeToggle />
         </div>
       </aside>
 
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur md:hidden">
         <span className="font-serif text-lg font-semibold">My Gold Vault</span>
-        <div className="flex">
-          <ThemeToggle />
-          <form action={signOut}><button aria-label="Sign out" className="grid h-11 w-11 place-items-center rounded-md hover:bg-muted"><LogOut className="h-5 w-5" /></button></form>
-        </div>
+        <ThemeToggle />
       </header>
 
       {/* Mobile bottom nav + floating Add Gold button */}

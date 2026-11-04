@@ -4,13 +4,13 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FileText, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { createJewellery, updateJewellery } from "@/app/actions/jewellery";
+import { createJewellery, updateJewellery } from "@/lib/actions/jewellery";
 import { jewellerySchema } from "@/lib/validation";
 import {
   CATEGORIES, PURITIES, chargeAmount, estimatePurchaseCost, formatGrams, formatINR, formatSovereigns,
   gramsToSovereigns, netGoldWeight, roundWeight, sovereignsToGrams, type Charge,
 } from "@/lib/gold";
+import { putFile, removeFiles, type Bucket } from "@/lib/store";
 import { BILL_MAX_BYTES, MAX_PHOTOS, compressImage, isAllowedBill, isAllowedImage } from "@/lib/upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,6 @@ import { ImageUploader, type PhotoItem } from "@/components/image-uploader";
 import type { Jewellery } from "@/types/db";
 
 interface Props {
-  userId: string;
   /** When provided, the form edits this item. */
   existing?: { item: Jewellery; images: { id: string; url: string | null; is_cover: boolean }[]; billUrl: string | null };
 }
@@ -27,7 +26,11 @@ interface Props {
 type ChargeMode = "fixed" | "percent";
 const today = () => new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd in local time
 
-export function JewelleryForm({ userId, existing }: Props) {
+async function removeUploads(uploaded: { bucket: Bucket; path: string }[]) {
+  for (const u of uploaded) await removeFiles(u.bucket, [u.path]).catch(() => {});
+}
+
+export function JewelleryForm({ existing }: Props) {
   const router = useRouter();
   const item = existing?.item;
   const idRef = useRef(item?.id ?? crypto.randomUUID());
@@ -162,15 +165,13 @@ export function JewelleryForm({ userId, existing }: Props) {
     }
     setErrors({});
     setBusy(true);
-    const supabase = createClient();
-    const uploaded: { bucket: string; path: string }[] = [];
+    const uploaded: { bucket: Bucket; path: string }[] = [];
     try {
       const id = idRef.current;
       const newImages: { path: string }[] = [];
       for (const p of photos.filter((x) => x.file)) {
-        const path = `${userId}/${id}/${crypto.randomUUID()}.jpg`;
-        const { error } = await supabase.storage.from("jewellery-images").upload(path, p.file!, { contentType: "image/jpeg", upsert: false });
-        if (error) throw new Error(`Photo upload failed: ${error.message}`);
+        const path = `${id}/${crypto.randomUUID()}.jpg`;
+        await putFile("jewellery-images", path, p.file!).catch((e) => { throw new Error(`Photo upload failed: ${e.message}`); });
         uploaded.push({ bucket: "jewellery-images", path });
         newImages.push({ path });
       }
@@ -178,9 +179,8 @@ export function JewelleryForm({ userId, existing }: Props) {
       if (bill) {
         const ext = bill.type === "application/pdf" ? "pdf" : "jpg";
         const file = bill.type.startsWith("image/") ? await compressImage(bill) : bill;
-        billPath = `${userId}/${id}/bill-${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage.from("jewellery-bills").upload(billPath, file, { contentType: file.type, upsert: false });
-        if (error) throw new Error(`Bill upload failed: ${error.message}`);
+        billPath = `${id}/bill-${crypto.randomUUID()}.${ext}`;
+        await putFile("jewellery-bills", billPath, file).catch((e) => { throw new Error(`Bill upload failed: ${e.message}`); });
         uploaded.push({ bucket: "jewellery-bills", path: billPath });
       }
       const coverPhoto = photos.find((p) => p.key === coverKey);
@@ -191,16 +191,15 @@ export function JewelleryForm({ userId, existing }: Props) {
       const res = existing ? await updateJewellery(payload) : await createJewellery(payload);
       if (!res.ok) {
         // Roll back files we just uploaded so nothing orphaned stays in storage.
-        for (const u of uploaded) await supabase.storage.from(u.bucket).remove([u.path]);
+        await removeUploads(uploaded);
         if (res.fieldErrors) setErrors(res.fieldErrors);
         toast.error(res.error);
         return;
       }
       toast.success(existing ? "Jewellery updated" : "Gold added to your vault");
-      router.push(`/jewellery/${res.id}`);
-      router.refresh();
+      router.push(`/jewellery?id=${res.id}`);
     } catch (err) {
-      for (const u of uploaded) await supabase.storage.from(u.bucket).remove([u.path]);
+      await removeUploads(uploaded);
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setBusy(false);

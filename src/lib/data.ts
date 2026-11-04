@@ -1,5 +1,7 @@
-import "server-only";
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect, useState } from "react";
+import { fileUrl, readVault, subscribe } from "@/lib/store";
 import type { RateMap, Purity } from "@/lib/gold";
 import type { GoldRate, Jewellery, JewelleryImage } from "@/types/db";
 
@@ -7,52 +9,48 @@ export interface JewelleryWithCover extends Jewellery {
   cover_url: string | null;
 }
 
-const SIGNED_URL_TTL = 60 * 60; // 1 hour — images are never public.
-
 export async function getJewellery(): Promise<JewelleryWithCover[]> {
-  const supabase = await createClient();
-  const { data: items, error } = await supabase.from("jewellery").select("*").order("purchase_date", { ascending: false });
-  if (error) throw new Error(error.message);
-  if (!items?.length) return [];
-  const { data: covers } = await supabase.from("jewellery_images").select("jewellery_id, storage_path").eq("is_cover", true);
-  const paths = (covers ?? []).map((c) => c.storage_path);
-  const urlByPath = new Map<string, string>();
-  if (paths.length) {
-    const { data: signed } = await supabase.storage.from("jewellery-images").createSignedUrls(paths, SIGNED_URL_TTL);
-    signed?.forEach((s) => { if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl); });
-  }
-  const pathByItem = new Map((covers ?? []).map((c) => [c.jewellery_id, c.storage_path]));
-  return (items as Jewellery[]).map((i) => ({ ...i, cover_url: urlByPath.get(pathByItem.get(i.id) ?? "") ?? null }));
+  const { jewellery, images } = await readVault();
+  const coverByItem = new Map(images.filter((i) => i.is_cover).map((i) => [i.jewellery_id, i.storage_path]));
+  const sorted = [...jewellery].sort((a, b) => b.purchase_date.localeCompare(a.purchase_date));
+  return Promise.all(sorted.map(async (i) => {
+    const cover = coverByItem.get(i.id);
+    return { ...i, cover_url: cover ? await fileUrl("jewellery-images", cover) : null };
+  }));
 }
 
 export async function getJewelleryById(id: string) {
-  const supabase = await createClient();
-  const { data: item } = await supabase.from("jewellery").select("*").eq("id", id).maybeSingle();
+  const vault = await readVault();
+  const item = vault.jewellery.find((j) => j.id === id);
   if (!item) return null;
-  const { data: images } = await supabase.from("jewellery_images").select("id, jewellery_id, storage_path, is_cover").eq("jewellery_id", id).order("created_at");
-  const imgs = (images ?? []) as JewelleryImage[];
-  const urls = new Map<string, string>();
-  if (imgs.length) {
-    const { data: signed } = await supabase.storage.from("jewellery-images").createSignedUrls(imgs.map((i) => i.storage_path), SIGNED_URL_TTL);
-    signed?.forEach((s) => { if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl); });
-  }
-  let billUrl: string | null = null;
-  if (item.bill_path) {
-    const { data } = await supabase.storage.from("jewellery-bills").createSignedUrl(item.bill_path, SIGNED_URL_TTL);
-    billUrl = data?.signedUrl ?? null;
-  }
+  const imgs: JewelleryImage[] = vault.images
+    .filter((i) => i.jewellery_id === id)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .map(({ id, jewellery_id, storage_path, is_cover }) => ({ id, jewellery_id, storage_path, is_cover }));
   return {
-    item: item as Jewellery,
-    images: imgs.map((i) => ({ ...i, url: urls.get(i.storage_path) ?? null })),
-    billUrl,
+    item,
+    images: await Promise.all(imgs.map(async (i) => ({ ...i, url: await fileUrl("jewellery-images", i.storage_path) }))),
+    billUrl: item.bill_path ? await fileUrl("jewellery-bills", item.bill_path) : null,
   };
 }
 
 export async function getRates(): Promise<{ rates: RateMap; rows: GoldRate[] }> {
-  const supabase = await createClient();
-  const { data } = await supabase.from("gold_rates").select("id, purity, rate_per_gram, source, updated_at");
-  const rows = (data ?? []) as GoldRate[];
+  const rows = (await readVault()).rates;
   const rates: RateMap = {};
   rows.forEach((r) => { rates[r.purity as Purity] = Number(r.rate_per_gram); });
   return { rates, rows };
+}
+
+/** Loads data from the vault and reloads it whenever the vault changes. Undefined while loading. */
+export function useVaultData<T>(load: () => Promise<T>, deps: unknown[] = []): T | undefined {
+  const [data, setData] = useState<T>();
+  useEffect(() => {
+    let live = true;
+    const run = () => { load().then((d) => { if (live) setData(d); }); };
+    run();
+    const unsubscribe = subscribe(run);
+    return () => { live = false; unsubscribe(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return data;
 }

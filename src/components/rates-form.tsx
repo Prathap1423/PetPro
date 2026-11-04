@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
-import { saveRate, type RateState } from "@/app/actions/rates";
+import { saveRate, type RateState } from "@/lib/actions/rates";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/utils";
