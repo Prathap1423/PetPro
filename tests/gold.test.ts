@@ -3,7 +3,7 @@ import {
   chargeAmount, estimateCurrentValue, estimatePurchaseCost, gramsToSovereigns, netGoldWeight,
   percentChange, rateForPurity, realizedProfitLoss, round, sovereignsToGrams, summariseInventory,
   validateWeights, type SummarisableItem,
-} from "@/lib/gold";
+} from "@/domain/gold";
 
 describe("weight conversion", () => {
   it("converts grams to sovereigns (1 sov = 8 g)", () => {

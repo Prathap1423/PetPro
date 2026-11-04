@@ -1,4 +1,4 @@
-import { AppNav } from "@/components/app-nav";
+import { AppNav } from "@/components/layout/app-nav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (

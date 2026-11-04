@@ -41,9 +41,33 @@ Everything (items, rates, photos, bills) is saved **in the browser you use**, in
 
 Scripts: `npm run dev | build | typecheck | test`.
 
+## Architecture
+
+```
+src/
+  app/                  Next.js routes only. Each page.tsx renders one feature screen.
+  features/
+    dashboard/          screens/ + components/ for the summary page
+    jewellery/          screens/ (collection, detail, add, edit), components/, queries.ts, service.ts
+    rates/              screens/, components/, queries.ts, service.ts
+  domain/               Pure business logic and types: gold.ts (weights, valuation), jewellery.ts (rules), schemas.ts (zod), types.ts
+  storage/              IndexedDB: db.ts (connection), vault.ts (records + change events), files.ts (photo/bill blobs)
+  hooks/                use-vault-data.ts: load data and reload when the vault changes
+  components/           Shared UI: ui/ primitives, layout/app-nav, providers, theme toggle, page skeleton
+  lib/                  Small helpers: utils.ts (cn, dates), image.ts (compression, file checks)
+tests/                  Vitest unit tests for domain/
+```
+
+Dependencies point one way: **app → features → domain / storage**.
+
+- **Screens** load data with `useVaultData(query)` and compose components. **Components** only render and call services.
+- **`queries.ts`** reads from storage and **`service.ts`** writes to it: it validates with the domain schemas, enforces the rules, stores files, and rolls back on failure. UI code never imports `storage/` directly.
+- **`domain/`** imports nothing from React or storage, so it is fully unit-testable.
+- A feature may use another feature's queries or components (the dashboard uses jewellery and rates), but never its storage.
+
 ## How it works
 
-- **Business logic** lives in `src/lib/gold.ts` (pure functions, unit-tested in `tests/gold.test.ts`): 1 sovereign = 8 g, net weight, cost estimate, purity-based valuation, inventory totals (only *owned* items count).
+- **Business logic** lives in `src/domain/` (pure functions, unit-tested in `tests/`): 1 sovereign = 8 g, net weight, cost estimate, purity-based valuation, inventory totals (only *owned* items count).
 - **Purchase price is never overwritten.** The form shows a cost estimate and a "Use estimate" button; the number saved is always what you typed.
 - **Net weight is derived on save** (`net = gross − non-gold`) and every save is validated with Zod.
 - **Valuation:** uses the rate you saved for that purity; if none, derives it from the 24K rate (22K = 22/24). "Other" purity needs its own rate. Items with no usable rate are excluded from the estimate and flagged.
