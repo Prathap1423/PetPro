@@ -14,15 +14,17 @@ A private, mobile-first web app for tracking your personal gold jewellery: photo
 
 ## Hosting (Zoho Catalyst Slate)
 
-The app builds to a plain static site, so there is no server to run and no login. Slate deploys it from GitHub on every push to `master`. Slate project settings:
+The Slate app uses the **Static** framework, which serves files as they are and does not run a build. So the built site is committed in `site/`, and Slate's **Root Path** is set to `./site`.
 
-| Setting | Value |
-|---|---|
-| Framework | Next.js (static export) |
-| Root directory | `/` |
-| Install command | `npm ci` |
-| Build command | `npm run build` |
-| Output directory | `out` |
+After changing the app, rebuild and commit `site/`, then push:
+
+```bash
+npm run build:site
+git add site && git commit -m "Rebuild site"
+git push origin master
+```
+
+Slate redeploys from `master` (or click **Sync Now** in Slate).
 
 ## Where the data lives
 
@@ -35,7 +37,7 @@ Everything (items, rates, photos, bills) is saved **in the browser you use**, in
 ## Developing
 
 `npm install && npm run dev`, then open http://localhost:3000.
-`npm run build` writes the static site to `out/`. Set `NEXT_PUBLIC_BASE_PATH` only if the site is served from a sub-path (for example `/app`).
+`npm run build` writes the static site to `out/`; `npm run build:site` also copies it to `site/` for Slate. Set `NEXT_PUBLIC_BASE_PATH` only if the site is served from a sub-path (for example `/app`).
 
 Scripts: `npm run dev | build | typecheck | test`.
 
