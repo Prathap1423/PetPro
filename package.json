@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:site": "next build && rm -rf site && cp -R out site",
+    "build:site": "NEXT_PUBLIC_BASE_PATH=/site next build && rm -rf site && cp -R out site",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

@@ -14,7 +14,7 @@ A private, mobile-first web app for tracking your personal gold jewellery: photo
 
 ## Hosting (Zoho Catalyst Slate)
 
-The Slate app uses the **Static** framework, which serves files as they are and does not run a build. So the built site is committed in `site/`, and Slate's **Root Path** is set to `./site`.
+The Slate app uses the **Static** framework, which serves files as they are and does not run a build. So the built site is committed in `site/` and served at https://petpro.onslate.in/site/. Slate's **Root Path** stays `./` (its settings dialog won't save a change), so the root `index.html` redirects visitors to `/site/`, and `npm run build:site` builds the app with the `/site` base path.
 
 After changing the app, rebuild and commit `site/`, then push:
 
@@ -37,7 +37,7 @@ Everything (items, rates, photos, bills) is saved **in the browser you use**, in
 ## Developing
 
 `npm install && npm run dev`, then open http://localhost:3000.
-`npm run build` writes the static site to `out/`; `npm run build:site` also copies it to `site/` for Slate. Set `NEXT_PUBLIC_BASE_PATH` only if the site is served from a sub-path (for example `/app`).
+`npm run build` writes the static site to `out/`; `npm run build:site` builds with the `/site` base path and copies the result to `site/` for Slate. Set `NEXT_PUBLIC_BASE_PATH` only if the site is served from a sub-path (for example `/app`).
 
 Scripts: `npm run dev | build | typecheck | test`.
 
