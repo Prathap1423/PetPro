@@ -4,12 +4,13 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FileText, Loader2 } from "lucide-react";
-import { createJewellery, updateJewellery } from "@/app/actions/jewellery";
+import { createJewellery, updateJewellery } from "@/lib/actions/jewellery";
 import { jewellerySchema } from "@/lib/validation";
 import {
   CATEGORIES, PURITIES, chargeAmount, estimatePurchaseCost, formatGrams, formatINR, formatSovereigns,
   gramsToSovereigns, netGoldWeight, roundWeight, sovereignsToGrams, type Charge,
 } from "@/lib/gold";
+import { putFile, removeFiles, type Bucket } from "@/lib/store";
 import { BILL_MAX_BYTES, MAX_PHOTOS, compressImage, isAllowedBill, isAllowedImage } from "@/lib/upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,20 +26,8 @@ interface Props {
 type ChargeMode = "fixed" | "percent";
 const today = () => new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd in local time
 
-async function uploadFile(bucket: string, path: string, file: File) {
-  const body = new FormData();
-  body.append("bucket", bucket);
-  body.append("path", path);
-  body.append("file", file);
-  const res = await fetch("/api/files", { method: "POST", body });
-  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? res.statusText);
-}
-
-async function removeUploads(uploaded: { bucket: string; path: string }[]) {
-  for (const bucket of new Set(uploaded.map((u) => u.bucket))) {
-    const paths = uploaded.filter((u) => u.bucket === bucket).map((u) => u.path);
-    await fetch("/api/files", { method: "DELETE", body: JSON.stringify({ bucket, paths }) }).catch(() => {});
-  }
+async function removeUploads(uploaded: { bucket: Bucket; path: string }[]) {
+  for (const u of uploaded) await removeFiles(u.bucket, [u.path]).catch(() => {});
 }
 
 export function JewelleryForm({ existing }: Props) {
@@ -176,13 +165,13 @@ export function JewelleryForm({ existing }: Props) {
     }
     setErrors({});
     setBusy(true);
-    const uploaded: { bucket: string; path: string }[] = [];
+    const uploaded: { bucket: Bucket; path: string }[] = [];
     try {
       const id = idRef.current;
       const newImages: { path: string }[] = [];
       for (const p of photos.filter((x) => x.file)) {
         const path = `${id}/${crypto.randomUUID()}.jpg`;
-        await uploadFile("jewellery-images", path, p.file!).catch((e) => { throw new Error(`Photo upload failed: ${e.message}`); });
+        await putFile("jewellery-images", path, p.file!).catch((e) => { throw new Error(`Photo upload failed: ${e.message}`); });
         uploaded.push({ bucket: "jewellery-images", path });
         newImages.push({ path });
       }
@@ -191,7 +180,7 @@ export function JewelleryForm({ existing }: Props) {
         const ext = bill.type === "application/pdf" ? "pdf" : "jpg";
         const file = bill.type.startsWith("image/") ? await compressImage(bill) : bill;
         billPath = `${id}/bill-${crypto.randomUUID()}.${ext}`;
-        await uploadFile("jewellery-bills", billPath, file).catch((e) => { throw new Error(`Bill upload failed: ${e.message}`); });
+        await putFile("jewellery-bills", billPath, file).catch((e) => { throw new Error(`Bill upload failed: ${e.message}`); });
         uploaded.push({ bucket: "jewellery-bills", path: billPath });
       }
       const coverPhoto = photos.find((p) => p.key === coverKey);
@@ -208,8 +197,7 @@ export function JewelleryForm({ existing }: Props) {
         return;
       }
       toast.success(existing ? "Jewellery updated" : "Gold added to your vault");
-      router.push(`/jewellery/${res.id}`);
-      router.refresh();
+      router.push(`/jewellery?id=${res.id}`);
     } catch (err) {
       await removeUploads(uploaded);
       toast.error(err instanceof Error ? err.message : "Something went wrong");

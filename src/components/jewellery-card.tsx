@@ -9,7 +9,7 @@ export function JewelleryCard({ item, rates, layout = "grid" }: { item: Jeweller
   const value = estimateCurrentValue({ netGoldWeight: item.net_gold_weight, purity: item.purity }, rates);
   return (
     <Link
-      href={`/jewellery/${item.id}`}
+      href={`/jewellery?id=${item.id}`}
       className={cn("group overflow-hidden rounded-lg border border-border bg-card shadow-sm transition hover:shadow-md focus-visible:ring-2 focus-visible:ring-gold", layout === "list" ? "flex" : "block")}
     >
       <div className={cn("relative bg-muted", layout === "list" ? "h-28 w-28 shrink-0" : "aspect-square w-full")}>

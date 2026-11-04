@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import { Coins, Gem, HandCoins, Plus, Scale, TrendingUp, Wallet } from "lucide-react";
-import { getJewellery, getRates } from "@/lib/data";
+import { getJewellery, getRates, useVaultData } from "@/lib/data";
 import { formatGrams, formatINR, formatSovereigns, summariseInventory } from "@/lib/gold";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { JewelleryCard } from "@/components/jewellery-card";
+import Loading from "./loading";
 
-export default async function DashboardPage() {
-  const [items, { rates }] = await Promise.all([getJewellery(), getRates()]);
+export default function DashboardPage() {
+  const data = useVaultData(() => Promise.all([getJewellery(), getRates()]));
+  if (!data) return <Loading />;
+  const [items, { rates }] = data;
   const summary = summariseInventory(
     items.map((i) => ({
       netGoldWeight: i.net_gold_weight, purity: i.purity, purchasePrice: i.purchase_price,

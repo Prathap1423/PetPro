@@ -1,10 +1,13 @@
-import { getRates } from "@/lib/data";
+"use client";
+
+import { getRates, useVaultData } from "@/lib/data";
 import { PURITIES } from "@/lib/gold";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RateRow } from "@/components/rates-form";
 
-export default async function RatesPage() {
-  const { rows } = await getRates();
+export default function RatesPage() {
+  const rows = useVaultData(getRates)?.rows;
+  if (!rows) return null;
   const by = new Map(rows.map((r) => [r.purity, r]));
   return (
     <div className="mx-auto max-w-xl space-y-4">

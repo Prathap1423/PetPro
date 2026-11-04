@@ -1,6 +1,5 @@
-"use server";
+"use client";
 
-import { revalidatePath } from "next/cache";
 import { updateVault } from "@/lib/store";
 import { ratesSchema } from "@/lib/validation";
 
@@ -16,6 +15,5 @@ export async function saveRate(_: RateState, formData: FormData): Promise<RateSt
     if (existing) Object.assign(existing, { rate_per_gram, source: "manual", updated_at });
     else v.rates.push({ id: crypto.randomUUID(), purity, rate_per_gram, source: "manual", updated_at });
   });
-  revalidatePath("/", "layout");
   return { message: `${purity} rate saved` };
 }

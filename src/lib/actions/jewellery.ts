@@ -1,6 +1,5 @@
-"use server";
+"use client";
 
-import { revalidatePath } from "next/cache";
 import { isFilePath, removeFiles, updateVault, type Vault } from "@/lib/store";
 import { jewellerySchema, withNetWeight, type JewelleryInput } from "@/lib/validation";
 import type { Jewellery } from "@/types/db";
@@ -34,7 +33,7 @@ const DUPLICATE = "This jewellery looks like a duplicate (same invoice number, o
 export interface SaveInput {
   id: string;
   values: unknown;
-  /** Newly uploaded images (already on disk). */
+  /** Newly uploaded images (already in the files store). */
   newImages: { path: string }[];
   /** Cover: an existing image id, or the storage path of a new one. */
   cover?: { imageId?: string; path?: string } | null;
@@ -58,7 +57,6 @@ async function run(fn: () => Promise<void>, id: string): Promise<ActionResult> {
     if (err instanceof Rejected) return { ok: false, error: err.message };
     throw err;
   }
-  revalidatePath("/", "layout");
   return { ok: true, id };
 }
 
@@ -147,6 +145,5 @@ export async function deleteJewellery(id: string): Promise<{ ok: boolean; error?
   if (!files.found) return { ok: false, error: "Jewellery not found" };
   await removeFiles("jewellery-images", files.images);
   if (files.bill) await removeFiles("jewellery-bills", [files.bill]);
-  revalidatePath("/", "layout");
   return { ok: true };
 }

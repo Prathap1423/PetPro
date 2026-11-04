@@ -1,20 +1,27 @@
+"use client";
+
+import { Suspense } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, FileText, Pencil } from "lucide-react";
-import { getJewelleryById, getRates } from "@/lib/data";
+import { getJewelleryById, getRates, useVaultData } from "@/lib/data";
 import { estimateCurrentValue, formatGrams, formatINR, formatSovereigns, gramsToSovereigns, percentChange, rateForPurity } from "@/lib/gold";
 import { formatDate } from "@/lib/utils";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImageGallery } from "@/components/image-gallery";
 import { DeleteButton } from "@/components/delete-button";
+import { ItemNotFound } from "@/components/item-not-found";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export default function JewelleryDetailPage() {
+  return <Suspense><JewelleryDetail /></Suspense>;
+}
 
-export default async function JewelleryDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  if (!UUID.test(id)) notFound();
-  const [data, { rates }] = await Promise.all([getJewelleryById(id), getRates()]);
-  if (!data) notFound();
+function JewelleryDetail() {
+  const id = useSearchParams().get("id") ?? "";
+  const loaded = useVaultData(() => Promise.all([getJewelleryById(id), getRates()]), [id]);
+  if (!loaded) return null;
+  const [data, { rates }] = loaded;
+  if (!data) return <ItemNotFound />;
   const { item, images, billUrl } = data;
   const value = estimateCurrentValue({ netGoldWeight: item.net_gold_weight, purity: item.purity }, rates);
   const lookup = rateForPurity(item.purity, rates);
@@ -52,7 +59,7 @@ export default async function JewelleryDetailPage({ params }: { params: Promise<
             </CardContent>
           </Card>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/jewellery/${item.id}/edit`} className="inline-flex h-11 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-muted"><Pencil className="h-4 w-4" />Edit</Link>
+            <Link href={`/jewellery/edit?id=${item.id}`} className="inline-flex h-11 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-muted"><Pencil className="h-4 w-4" />Edit</Link>
             {billUrl && <a href={billUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-muted"><FileText className="h-4 w-4" />View bill</a>}
             <DeleteButton id={item.id} name={item.name} />
           </div>
