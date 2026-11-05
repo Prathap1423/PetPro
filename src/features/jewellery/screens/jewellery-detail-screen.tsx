@@ -61,8 +61,8 @@ function JewelleryDetail() {
             </CardContent>
           </Card>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/jewellery/edit?id=${item.id}`} className="inline-flex h-11 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-muted"><Pencil className="h-4 w-4" />Edit</Link>
-            {billUrl && <a href={billUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-muted"><FileText className="h-4 w-4" />View bill</a>}
+            <Link href={`/jewellery/edit?id=${item.id}`} className="inline-flex h-11 items-center gap-2 rounded-md glass-control px-4 text-sm font-medium hover:bg-foreground/5"><Pencil className="h-4 w-4" />Edit</Link>
+            {billUrl && <a href={billUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-md glass-control px-4 text-sm font-medium hover:bg-foreground/5"><FileText className="h-4 w-4" />View bill</a>}
             <DeleteButton id={item.id} name={item.name} />
           </div>
         </div>

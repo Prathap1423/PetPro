@@ -240,7 +240,7 @@ export function JewelleryForm({ existing }: Props) {
           <Field label="Stone / non-gold weight (grams)" error={errors.non_gold_weight}>
             <Input type="number" inputMode="decimal" step="any" min="0" value={f.non_gold_weight} onChange={set("non_gold_weight")} aria-invalid={!!errors.non_gold_weight} />
           </Field>
-          <div className="rounded-md bg-muted p-3 text-sm sm:col-span-2" aria-live="polite">
+          <div className="rounded-md bg-foreground/5 p-3 text-sm sm:col-span-2" aria-live="polite">
             <p>Net gold weight: <strong>{formatGrams(netG)}</strong></p>
             <p>In sovereigns (1 sov = 8 g): <strong>{formatSovereigns(gramsToSovereigns(netG))}</strong></p>
           </div>
@@ -257,7 +257,7 @@ export function JewelleryForm({ existing }: Props) {
           {renderCharge({ label: "Making charges", name: "making", mode: makingMode, setMode: setMakingMode, error: errors.making_charges })}
           {renderCharge({ label: "Wastage charges", name: "wastage", mode: wastageMode, setMode: setWastageMode, error: errors.wastage_charges })}
           {renderCharge({ label: "GST / tax", name: "tax", mode: taxMode, setMode: setTaxMode, error: errors.tax })}
-          <div className="rounded-md bg-muted p-3 text-sm" aria-live="polite">
+          <div className="rounded-md bg-foreground/5 p-3 text-sm" aria-live="polite">
             {canEstimate ? (
               <>
                 <p>Metal {formatINR(estimate.metalValue)} + making {formatINR(estimate.making)} + wastage {formatINR(estimate.wastage)} + tax {formatINR(estimate.tax)} + other {formatINR(estimate.other)}</p>
@@ -278,7 +278,7 @@ export function JewelleryForm({ existing }: Props) {
         <CardHeader><CardTitle>Bill & notes</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-muted">
+            <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md glass-control px-4 text-sm font-medium hover:bg-foreground/5">
               <FileText className="h-5 w-5" />{bill || (item?.bill_path && !removeBill) ? "Replace bill" : "Upload purchase bill (optional)"}
               <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="sr-only" onChange={pickBill} disabled={busy} />
             </label>

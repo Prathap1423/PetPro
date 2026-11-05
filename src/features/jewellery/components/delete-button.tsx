@@ -25,7 +25,7 @@ export function DeleteButton({ id, name }: { id: string; name: string }) {
   return (
     <>
       <Button variant="outline" onClick={() => ref.current?.showModal()} className="text-destructive"><Trash2 className="h-4 w-4" />Delete</Button>
-      <dialog ref={ref} className="w-[90vw] max-w-sm rounded-lg border border-border bg-card p-5 text-card-foreground backdrop:bg-black/50">
+      <dialog ref={ref} className="w-[90vw] max-w-sm glass rounded-lg p-5 text-card-foreground backdrop:bg-black/30 backdrop:backdrop-blur-sm">
         <h2 className="font-serif text-lg font-semibold">Delete this jewellery?</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           &ldquo;{name}&rdquo;, its photos and bill will be permanently removed. This cannot be undone. If you sold or gave it away, keep the record instead.

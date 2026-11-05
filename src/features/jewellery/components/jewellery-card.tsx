@@ -10,7 +10,7 @@ export function JewelleryCard({ item, rates, layout = "grid" }: { item: Jeweller
   return (
     <Link
       href={`/jewellery?id=${item.id}`}
-      className={cn("group overflow-hidden rounded-lg border border-border bg-card card-pop shadow-sm focus-visible:ring-2 focus-visible:ring-gold", layout === "list" ? "flex" : "block")}
+      className={cn("glass group overflow-hidden rounded-lg card-pop focus-visible:ring-2 focus-visible:ring-gold", layout === "list" ? "flex" : "block")}
     >
       <div className={cn("relative overflow-hidden bg-muted", layout === "list" ? "h-28 w-28 shrink-0" : "aspect-square w-full")}>
         {item.cover_url ? (

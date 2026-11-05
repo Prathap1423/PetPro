@@ -8,8 +8,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "gold-gradient gold-shine text-gold-foreground shadow hover:opacity-90",
-        outline: "border border-border bg-card hover:bg-muted",
-        ghost: "hover:bg-muted",
+        outline: "glass-control hover:bg-foreground/5",
+        ghost: "hover:bg-foreground/5",
         destructive: "bg-destructive text-white hover:opacity-90",
       },
       size: { default: "h-11 px-4", sm: "h-9 px-3", lg: "h-12 px-6 text-base", icon: "h-11 w-11" },

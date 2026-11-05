@@ -30,11 +30,11 @@ export function ImageUploader({ photos, coverKey, onAdd, onRemove, onCover, disa
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-muted">
+        <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md glass-control px-4 text-sm font-medium hover:bg-foreground/5">
           <Camera className="h-5 w-5" />Take photo
           <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={pick} disabled={disabled} />
         </label>
-        <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium hover:bg-muted">
+        <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md glass-control px-4 text-sm font-medium hover:bg-foreground/5">
           <ImagePlus className="h-5 w-5" />Choose photos
           <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="sr-only" onChange={pick} disabled={disabled} />
         </label>
