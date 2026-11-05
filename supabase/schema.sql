@@ -1,5 +1,5 @@
--- My Gold Vault — tables, row level security and private file storage.
--- Paste the whole file into Supabase → SQL Editor → New query, then click Run. Run it once.
+-- My Gold Vault - tables, row level security and private file storage.
+-- Paste the whole file into Supabase > SQL Editor > New query, then click Run. Run it once.
 --
 -- Every row has a user_id, and every policy limits rows to the signed-in user (auth.uid()).
 -- Files live in private buckets under "<user id>/<jewellery id>/<file>" and are opened with signed URLs.
