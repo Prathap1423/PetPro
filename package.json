@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:site": "NEXT_PUBLIC_BASE_PATH=/site next build && rm -rf site && cp -R out site",
-    "start": "next start",
+    "preview": "npm run build:site && echo \"Preview: http://localhost:8082\" && python3 -m http.server 8082",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

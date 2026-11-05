@@ -43,10 +43,29 @@ Everything (items, rates, photos, bills) is saved in **Supabase**, so it is the 
 
 ## Developing
 
-`npm install && npm run dev`, then open http://localhost:3000.
-`npm run build` writes the static site to `out/`; `npm run build:site` builds with the `/site` base path and copies the result to `site/` for Slate. Set `NEXT_PUBLIC_BASE_PATH` only if the site is served from a sub-path (for example `/app`).
+```bash
+npm install
+npm run dev
+```
 
-Scripts: `npm run dev | build | typecheck | test`.
+Open http://localhost:3000. Pages reload as you edit code. This uses the **same Supabase project as the live site**, so sign in with your account and anything you add or delete is real data.
+
+To check exactly what Slate will serve before you push, run:
+
+```bash
+npm run preview
+```
+
+It builds `site/` with the `/site` base path and serves the repo root like Slate does, at http://localhost:8082 (redirects to `/site/`). Stop it with Ctrl+C.
+
+Sign-in works on localhost as long as Supabase allows these addresses: **Authentication > URL Configuration > Redirect URLs** should include `http://localhost:3000/**` and `http://localhost:8082/**`. A browser keeps a separate session per address, so you sign in once on each.
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Development server with live reload (port 3000) |
+| `npm run preview` | Build `site/` and serve it like Slate (port 8082) |
+| `npm run build:site` | Build `site/` only, ready to commit |
+| `npm run typecheck` / `npm test` | TypeScript check / unit tests |
 
 ## Architecture
 
