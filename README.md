@@ -26,6 +26,8 @@ git push origin master
 
 Slate redeploys from `master` (or click **Sync Now** in Slate).
 
+**Caching:** Slate sends every file with `Cache-Control: max-age=31536000` (one year), and its settings only offer an on/off cache switch. So `public/sw.js`, a small service worker, makes pages and page data check with the server on every visit (a cheap 304 when unchanged), while the hashed files in `_next/static/` keep the long cache. After a deploy, visitors get the new version on their next visit without a hard refresh. Browsers that cached a page before the service worker existed need one hard refresh (Cmd+Shift+R) to pick it up.
+
 ## Where the data lives
 
 Everything (items, rates, photos, bills) is saved in **Supabase**, so it is the same on every device you sign in on. Each account only ever sees its own data: every table and both file buckets have row level security tied to the signed-in user.
