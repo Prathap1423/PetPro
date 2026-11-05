@@ -2,15 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gem, LayoutDashboard, LineChart, Plus } from "lucide-react";
+import { Gem, LayoutDashboard, LineChart, LogOut, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { signOut } from "@/features/auth/service";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/collection", label: "Collection", icon: Gem },
   { href: "/rates", label: "Gold Rates", icon: LineChart },
 ];
+
+function SignOutButton() {
+  return (
+    <Button variant="ghost" size="icon" aria-label="Sign out" title="Sign out" onClick={() => signOut()}>
+      <LogOut className="h-5 w-5" />
+    </Button>
+  );
+}
 
 export function AppNav() {
   const path = usePathname();
@@ -33,15 +43,16 @@ export function AppNav() {
             <Plus className="h-5 w-5" />Add Gold
           </Link>
         </nav>
-        <div className="flex justify-end border-t border-border pt-3">
+        <div className="flex justify-end gap-1 border-t border-border pt-3">
           <ThemeToggle />
+          <SignOutButton />
         </div>
       </aside>
 
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur md:hidden">
         <span className="font-serif text-lg font-semibold">My Gold Vault</span>
-        <ThemeToggle />
+        <div className="flex gap-1"><ThemeToggle /><SignOutButton /></div>
       </header>
 
       {/* Mobile bottom nav + floating Add Gold button */}

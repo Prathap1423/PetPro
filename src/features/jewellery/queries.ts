@@ -1,34 +1,49 @@
 "use client";
 
-import { fileUrl } from "@/storage/files";
-import { readVault } from "@/storage/vault";
+import { fileUrl, fileUrls } from "@/storage/files";
+import { must, rowsOf, supabase } from "@/storage/supabase";
 import type { Jewellery, JewelleryImage } from "@/domain/types";
 
 export interface JewelleryWithCover extends Jewellery {
   cover_url: string | null;
 }
 
+const NUMERIC = [
+  "gross_weight", "non_gold_weight", "net_gold_weight", "gold_rate_at_purchase",
+  "making_charges", "wastage_charges", "tax", "other_charges", "purchase_price",
+] as const;
+
+/** Postgres numeric columns may arrive as strings; the app works with numbers. */
+export function toJewellery(row: Record<string, unknown>): Jewellery {
+  const j = { ...row } as Record<string, unknown>;
+  for (const k of NUMERIC) if (j[k] !== null && j[k] !== undefined) j[k] = Number(j[k]);
+  return j as unknown as Jewellery;
+}
+
 export async function getJewellery(): Promise<JewelleryWithCover[]> {
-  const { jewellery, images } = await readVault();
-  const coverByItem = new Map(images.filter((i) => i.is_cover).map((i) => [i.jewellery_id, i.storage_path]));
-  const sorted = [...jewellery].sort((a, b) => b.purchase_date.localeCompare(a.purchase_date));
-  return Promise.all(sorted.map(async (i) => {
-    const cover = coverByItem.get(i.id);
-    return { ...i, cover_url: cover ? await fileUrl("jewellery-images", cover) : null };
-  }));
+  const [rows, covers] = await Promise.all([
+    supabase.from("jewellery").select("*").order("purchase_date", { ascending: false }).then(rowsOf),
+    supabase.from("jewellery_images").select("jewellery_id, storage_path").eq("is_cover", true).then(rowsOf),
+  ]);
+  const coverByItem = new Map(covers.map((c) => [c.jewellery_id as string, c.storage_path as string]));
+  const urls = await fileUrls("jewellery-images", [...coverByItem.values()]);
+  return rows.map((r) => {
+    const item = toJewellery(r);
+    const cover = coverByItem.get(item.id);
+    return { ...item, cover_url: cover ? urls.get(cover) ?? null : null };
+  });
 }
 
 export async function getJewelleryById(id: string) {
-  const vault = await readVault();
-  const item = vault.jewellery.find((j) => j.id === id);
-  if (!item) return null;
-  const imgs: JewelleryImage[] = vault.images
-    .filter((i) => i.jewellery_id === id)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map(({ id, jewellery_id, storage_path, is_cover }) => ({ id, jewellery_id, storage_path, is_cover }));
+  const row = await supabase.from("jewellery").select("*").eq("id", id).maybeSingle().then(must);
+  if (!row) return null;
+  const item = toJewellery(row);
+  const imgs = (await supabase.from("jewellery_images").select("id, jewellery_id, storage_path, is_cover")
+    .eq("jewellery_id", id).order("created_at").then(rowsOf)) as JewelleryImage[];
+  const urls = await fileUrls("jewellery-images", imgs.map((i) => i.storage_path));
   return {
     item,
-    images: await Promise.all(imgs.map(async (i) => ({ ...i, url: await fileUrl("jewellery-images", i.storage_path) }))),
+    images: imgs.map((i) => ({ ...i, url: urls.get(i.storage_path) ?? null })),
     billUrl: item.bill_path ? await fileUrl("jewellery-bills", item.bill_path) : null,
   };
 }

@@ -48,3 +48,8 @@ export const ratesSchema = z.object({
   purity: z.enum(PURITIES),
   rate_per_gram: z.coerce.number().finite().positive("Rate must be greater than 0").max(10_000_000),
 });
+
+export const credentialsSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password must be at most 72 characters"),
+});

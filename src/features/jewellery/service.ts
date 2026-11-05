@@ -2,9 +2,9 @@
 
 import { DUPLICATE_MESSAGE, MAX_PHOTOS, isDuplicate } from "@/domain/jewellery";
 import { jewellerySchema, withNetWeight } from "@/domain/schemas";
-import type { Jewellery } from "@/domain/types";
+import { notifyChanged } from "@/storage/changes";
 import { putFile, removeFiles, type Bucket } from "@/storage/files";
-import { updateVault } from "@/storage/vault";
+import { currentUserId, must, rowsOf, supabase } from "@/storage/supabase";
 
 export type ActionResult =
   | { ok: true; id: string }
@@ -12,7 +12,7 @@ export type ActionResult =
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Thrown inside a vault update to abort it without saving. */
+/** Thrown during a save to abort it with a message for the user. */
 class Rejected extends Error {}
 
 export interface SaveInput {
@@ -28,6 +28,8 @@ export interface SaveInput {
   removeBill?: boolean;
 }
 
+type Values = ReturnType<typeof withNetWeight>;
+
 function validate(values: unknown) {
   const parsed = jewellerySchema.safeParse(values);
   if (parsed.success) return { ok: true as const, data: withNetWeight(parsed.data) };
@@ -36,22 +38,38 @@ function validate(values: unknown) {
   return { ok: false as const, error: "Please fix the highlighted fields.", fieldErrors };
 }
 
-/** Files are stored under "<jewellery id>/" so an item can never point at another item's files. */
-async function storeFiles(input: SaveInput) {
+/** Checked before uploading anything; the database's unique indexes are the final guard. */
+async function assertNotDuplicate(data: Values, selfId: string) {
+  const rows = await supabase.from("jewellery").select("id, name, purchase_date, gross_weight, invoice_number").then(rowsOf);
+  const existing = rows.map((r) => ({ ...r, gross_weight: Number(r.gross_weight) }));
+  if (isDuplicate(existing, data, selfId)) throw new Rejected(DUPLICATE_MESSAGE);
+}
+
+/** Supabase call that throws on error, turning a unique-index violation into the duplicate message. */
+async function run<T>(res: PromiseLike<{ data: T; error: { message: string; code?: string } | null }>): Promise<T> {
+  const { data, error } = await res;
+  if (error?.code === "23505") throw new Rejected(DUPLICATE_MESSAGE);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Files are stored under "<user id>/<jewellery id>/" so an item can never point at another item's files. */
+async function storeFiles(userId: string, input: SaveInput) {
   const stored: { bucket: Bucket; path: string }[] = [];
   const put = async (bucket: Bucket, path: string, file: Blob, what: string) => {
-    await putFile(bucket, path, file).catch((e) => { throw new Error(`${what} upload failed: ${e.message}`); });
+    await putFile(bucket, path, file).catch((e) => { throw new Rejected(`${what} upload failed: ${e.message}`); });
     stored.push({ bucket, path });
     return path;
   };
   const rollback = async () => {
     for (const s of stored) await removeFiles(s.bucket, [s.path]).catch(() => {});
   };
+  const dir = `${userId}/${input.id}`;
   try {
     const photoPaths: string[] = [];
-    for (const f of input.newPhotos) photoPaths.push(await put("jewellery-images", `${input.id}/${crypto.randomUUID()}.jpg`, f, "Photo"));
+    for (const f of input.newPhotos) photoPaths.push(await put("jewellery-images", `${dir}/${crypto.randomUUID()}.jpg`, f, "Photo"));
     const billPath = input.bill
-      ? await put("jewellery-bills", `${input.id}/bill-${crypto.randomUUID()}.${input.bill.type === "application/pdf" ? "pdf" : "jpg"}`, input.bill, "Bill")
+      ? await put("jewellery-bills", `${dir}/bill-${crypto.randomUUID()}.${input.bill.type === "application/pdf" ? "pdf" : "jpg"}`, input.bill, "Bill")
       : null;
     return { photoPaths, billPath, rollback };
   } catch (err) {
@@ -60,22 +78,16 @@ async function storeFiles(input: SaveInput) {
   }
 }
 
-/** Stores the files, runs the vault update, and removes the stored files again if it fails. */
-async function save(input: SaveInput, apply: (paths: { photoPaths: string[]; billPath: string | null }) => Promise<void>): Promise<ActionResult> {
-  let files: Awaited<ReturnType<typeof storeFiles>>;
+/** Turns a thrown error into a result for the form. */
+async function result(id: string, fn: () => Promise<void>): Promise<ActionResult> {
   try {
-    files = await storeFiles(input);
+    await fn();
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Could not save files" };
-  }
-  try {
-    await apply(files);
-  } catch (err) {
-    await files.rollback();
     if (err instanceof Rejected) return { ok: false, error: err.message };
-    throw err;
+    return { ok: false, error: err instanceof Error ? err.message : "Something went wrong" };
   }
-  return { ok: true, id: input.id };
+  notifyChanged();
+  return { ok: true, id };
 }
 
 export async function createJewellery(input: SaveInput): Promise<ActionResult> {
@@ -84,22 +96,29 @@ export async function createJewellery(input: SaveInput): Promise<ActionResult> {
   if (!v.ok) return v;
   if (input.newPhotos.length > MAX_PHOTOS) return { ok: false, error: `At most ${MAX_PHOTOS} photos per item` };
 
-  return save(input, ({ photoPaths, billPath }) => updateVault((vault) => {
-    if (vault.jewellery.some((j) => j.id === input.id)) throw new Rejected("This item already exists");
-    if (isDuplicate(vault.jewellery, v.data, input.id)) throw new Rejected(DUPLICATE_MESSAGE);
-    const now = new Date().toISOString();
-    vault.jewellery.push({
-      id: input.id, ...v.data, status: "owned", bill_path: billPath, created_at: now, updated_at: now,
-    } satisfies Jewellery);
-    const coverIndex = input.cover && "newPhotoIndex" in input.cover ? input.cover.newPhotoIndex : 0;
-    photoPaths.forEach((p, i) => vault.images.push({
-      id: crypto.randomUUID(), jewellery_id: input.id, storage_path: p, is_cover: i === coverIndex, created_at: now,
-    }));
-    vault.transactions.push({
-      id: crypto.randomUUID(), jewellery_id: input.id, transaction_type: "purchase",
-      transaction_date: v.data.purchase_date, amount: v.data.purchase_price, created_at: now,
-    });
-  }));
+  return result(input.id, async () => {
+    const userId = await currentUserId();
+    await assertNotDuplicate(v.data, input.id);
+    const files = await storeFiles(userId, input);
+    try {
+      await run(supabase.from("jewellery").insert({ id: input.id, user_id: userId, ...v.data, bill_path: files.billPath }));
+      const coverIndex = input.cover && "newPhotoIndex" in input.cover ? input.cover.newPhotoIndex : 0;
+      if (files.photoPaths.length) {
+        await run(supabase.from("jewellery_images").insert(files.photoPaths.map((p, i) => ({
+          user_id: userId, jewellery_id: input.id, storage_path: p, is_cover: i === coverIndex,
+        }))));
+      }
+      await run(supabase.from("transactions").insert({
+        user_id: userId, jewellery_id: input.id, transaction_type: "purchase",
+        transaction_date: v.data.purchase_date, amount: v.data.purchase_price,
+      }));
+    } catch (err) {
+      // Undo the partial save: deleting the item cascades to its images and transactions.
+      await supabase.from("jewellery").delete().eq("id", input.id);
+      await files.rollback();
+      throw err;
+    }
+  });
 }
 
 export async function updateJewellery(input: SaveInput): Promise<ActionResult> {
@@ -108,56 +127,71 @@ export async function updateJewellery(input: SaveInput): Promise<ActionResult> {
   if (!v.ok) return v;
 
   const orphans: { images: string[]; bill: string | null } = { images: [], bill: null };
-  const result = await save(input, ({ photoPaths, billPath }) => updateVault((vault) => {
-    const item = vault.jewellery.find((j) => j.id === input.id);
+  const res = await result(input.id, async () => {
+    const userId = await currentUserId();
+    const item = await supabase.from("jewellery").select("bill_path").eq("id", input.id).maybeSingle().then(must);
     if (!item) throw new Rejected("Jewellery not found");
-    if (isDuplicate(vault.jewellery, v.data, input.id)) throw new Rejected(DUPLICATE_MESSAGE);
+    await assertNotDuplicate(v.data, input.id);
 
+    const images = await supabase.from("jewellery_images").select("id, storage_path, is_cover").eq("jewellery_id", input.id).then(rowsOf);
     const removed = new Set(input.removedImageIds ?? []);
-    const kept = vault.images.filter((i) => i.jewellery_id === input.id && !removed.has(i.id));
-    if (kept.length + photoPaths.length > MAX_PHOTOS) throw new Rejected(`At most ${MAX_PHOTOS} photos per item`);
+    const kept = images.filter((i) => !removed.has(i.id));
+    if (kept.length + input.newPhotos.length > MAX_PHOTOS) throw new Rejected(`At most ${MAX_PHOTOS} photos per item`);
 
-    const oldBill = item.bill_path;
-    Object.assign(item, v.data, { updated_at: new Date().toISOString() });
-    if (billPath) item.bill_path = billPath;
-    else if (input.removeBill) item.bill_path = null;
-    if (oldBill && oldBill !== item.bill_path) orphans.bill = oldBill;
+    const files = await storeFiles(userId, input);
+    try {
+      const billPath = files.billPath ?? (input.removeBill ? null : item.bill_path);
+      await run(supabase.from("jewellery").update({ ...v.data, bill_path: billPath }).eq("id", input.id));
+      if (item.bill_path && item.bill_path !== billPath) orphans.bill = item.bill_path;
 
-    orphans.images = vault.images.filter((i) => i.jewellery_id === input.id && removed.has(i.id)).map((i) => i.storage_path);
-    vault.images = vault.images.filter((i) => !(i.jewellery_id === input.id && removed.has(i.id)));
-    const now = new Date().toISOString();
-    photoPaths.forEach((p) => vault.images.push({ id: crypto.randomUUID(), jewellery_id: input.id, storage_path: p, is_cover: false, created_at: now }));
+      const gone = images.filter((i) => removed.has(i.id));
+      if (gone.length) await run(supabase.from("jewellery_images").delete().in("id", gone.map((i) => i.id)));
+      orphans.images = gone.map((i) => i.storage_path);
+      const added = files.photoPaths.length
+        ? await run(supabase.from("jewellery_images").insert(files.photoPaths.map((p) => ({
+          user_id: userId, jewellery_id: input.id, storage_path: p, is_cover: false,
+        }))).select("id, storage_path, is_cover")) ?? []
+        : [];
 
-    // Exactly one cover whenever the item has images.
-    const mine = vault.images.filter((i) => i.jewellery_id === input.id);
-    const c = input.cover;
-    const wanted = !c ? undefined
-      : "imageId" in c ? mine.find((i) => i.id === c.imageId)
-      : mine.find((i) => i.storage_path === photoPaths[c.newPhotoIndex]);
-    const cover = wanted ?? mine.find((i) => i.is_cover) ?? mine[0];
-    mine.forEach((i) => { i.is_cover = i === cover; });
-  }));
+      // Exactly one cover whenever the item has images.
+      const mine = [...kept, ...added];
+      const c = input.cover;
+      const wanted = !c ? undefined
+        : "imageId" in c ? mine.find((i) => i.id === c.imageId)
+        : mine.find((i) => i.storage_path === files.photoPaths[c.newPhotoIndex]);
+      const cover = wanted ?? mine.find((i) => i.is_cover) ?? mine[0];
+      if (cover && !cover.is_cover) {
+        // Clear the old cover first: the database allows only one cover per item.
+        await run(supabase.from("jewellery_images").update({ is_cover: false }).eq("jewellery_id", input.id).eq("is_cover", true));
+        await run(supabase.from("jewellery_images").update({ is_cover: true }).eq("id", cover.id));
+      }
+    } catch (err) {
+      await files.rollback();
+      throw err;
+    }
+  });
 
   // Delete files only once the record no longer points at them.
-  if (result.ok) {
-    await removeFiles("jewellery-images", orphans.images);
-    if (orphans.bill) await removeFiles("jewellery-bills", [orphans.bill]);
+  if (res.ok) {
+    await removeFiles("jewellery-images", orphans.images).catch(() => {});
+    if (orphans.bill) await removeFiles("jewellery-bills", [orphans.bill]).catch(() => {});
   }
-  return result;
+  return res;
 }
 
 export async function deleteJewellery(id: string): Promise<{ ok: boolean; error?: string }> {
   if (!UUID.test(id)) return { ok: false, error: "Invalid id" };
-  const files = await updateVault((vault) => {
-    const item = vault.jewellery.find((j) => j.id === id);
-    const images = vault.images.filter((i) => i.jewellery_id === id).map((i) => i.storage_path);
-    vault.jewellery = vault.jewellery.filter((j) => j.id !== id);
-    vault.images = vault.images.filter((i) => i.jewellery_id !== id);
-    vault.transactions = vault.transactions.filter((t) => t.jewellery_id !== id);
-    return { found: !!item, images, bill: item?.bill_path ?? null };
-  });
-  if (!files.found) return { ok: false, error: "Jewellery not found" };
-  await removeFiles("jewellery-images", files.images);
-  if (files.bill) await removeFiles("jewellery-bills", [files.bill]);
+  try {
+    const item = await supabase.from("jewellery").select("bill_path").eq("id", id).maybeSingle().then(must);
+    if (!item) return { ok: false, error: "Jewellery not found" };
+    const images = await supabase.from("jewellery_images").select("storage_path").eq("jewellery_id", id).then(rowsOf);
+    // Deleting the item cascades to its images and transactions.
+    await supabase.from("jewellery").delete().eq("id", id).then(must);
+    await removeFiles("jewellery-images", images.map((i) => i.storage_path)).catch(() => {});
+    if (item.bill_path) await removeFiles("jewellery-bills", [item.bill_path]).catch(() => {});
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not delete" };
+  }
+  notifyChanged();
   return { ok: true };
 }

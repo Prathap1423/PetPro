@@ -1,12 +1,13 @@
 "use client";
 
-import { readVault } from "@/storage/vault";
+import { rowsOf, supabase } from "@/storage/supabase";
 import type { Purity, RateMap } from "@/domain/gold";
 import type { GoldRate } from "@/domain/types";
 
 export async function getRates(): Promise<{ rates: RateMap; rows: GoldRate[] }> {
-  const rows = (await readVault()).rates;
+  const rows = (await supabase.from("gold_rates").select("id, purity, rate_per_gram, source, updated_at").then(rowsOf))
+    .map((r) => ({ ...r, rate_per_gram: Number(r.rate_per_gram) })) as GoldRate[];
   const rates: RateMap = {};
-  rows.forEach((r) => { rates[r.purity as Purity] = Number(r.rate_per_gram); });
+  rows.forEach((r) => { rates[r.purity as Purity] = r.rate_per_gram; });
   return { rates, rows };
 }
