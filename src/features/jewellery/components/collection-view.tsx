@@ -47,7 +47,7 @@ export function CollectionView({ items, rates }: { items: JewelleryWithCover[]; 
       <div className="mt-16 text-center">
         <h2 className="font-serif text-xl font-semibold">No jewellery yet</h2>
         <p className="mt-1 text-muted-foreground">Your collection will appear here.</p>
-        <Link href="/add" className="gold-gradient mt-5 inline-flex h-12 items-center gap-2 rounded-md px-6 font-medium text-gold-foreground shadow"><Plus className="h-5 w-5" />Add Gold</Link>
+        <Link href="/add" className="gold-gradient gold-shine transition active:scale-[0.97] mt-5 inline-flex h-12 items-center gap-2 rounded-md px-6 font-medium text-gold-foreground shadow"><Plus className="h-5 w-5" />Add Gold</Link>
       </div>
     );
   }
@@ -91,7 +91,7 @@ export function CollectionView({ items, rates }: { items: JewelleryWithCover[]; 
           <Button variant="outline" className="mt-3" onClick={reset}>Clear filters</Button>
         </div>
       ) : (
-        <div className={layout === "grid" ? "grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" : "grid gap-3"}>
+        <div className={layout === "grid" ? "stagger grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" : "stagger grid gap-3"}>
           {filtered.map((i) => <JewelleryCard key={i.id} item={i} rates={rates} layout={layout} />)}
         </div>
       )}

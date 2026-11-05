@@ -10,12 +10,12 @@ export function JewelleryCard({ item, rates, layout = "grid" }: { item: Jeweller
   return (
     <Link
       href={`/jewellery?id=${item.id}`}
-      className={cn("group overflow-hidden rounded-lg border border-border bg-card shadow-sm transition hover:shadow-md focus-visible:ring-2 focus-visible:ring-gold", layout === "list" ? "flex" : "block")}
+      className={cn("group overflow-hidden rounded-lg border border-border bg-card shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md focus-visible:ring-2 focus-visible:ring-gold", layout === "list" ? "flex" : "block")}
     >
-      <div className={cn("relative bg-muted", layout === "list" ? "h-28 w-28 shrink-0" : "aspect-square w-full")}>
+      <div className={cn("relative overflow-hidden bg-muted", layout === "list" ? "h-28 w-28 shrink-0" : "aspect-square w-full")}>
         {item.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.cover_url} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
+          <img src={item.cover_url} alt={item.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         ) : (
           <div className="grid h-full w-full place-items-center text-muted-foreground"><ImageOff className="h-8 w-8" /></div>
         )}

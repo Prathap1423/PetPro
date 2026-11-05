@@ -39,7 +39,7 @@ export function AppNav() {
               <Icon className="h-5 w-5" />{label}
             </Link>
           ))}
-          <Link href="/add" className="gold-gradient mt-4 flex h-11 items-center justify-center gap-2 rounded-md text-sm font-medium text-gold-foreground shadow">
+          <Link href="/add" className="gold-gradient gold-shine transition active:scale-[0.97] mt-4 flex h-11 items-center justify-center gap-2 rounded-md text-sm font-medium text-gold-foreground shadow">
             <Plus className="h-5 w-5" />Add Gold
           </Link>
         </nav>
@@ -63,7 +63,7 @@ export function AppNav() {
           </Link>
         ))}
       </nav>
-      <Link href="/add" aria-label="Add Gold" className="gold-gradient fixed bottom-24 right-4 z-40 grid h-14 w-14 place-items-center rounded-full text-gold-foreground shadow-lg md:hidden">
+      <Link href="/add" aria-label="Add Gold" className="gold-gradient gold-shine animate-pop transition hover:scale-105 active:scale-95 fixed bottom-24 right-4 z-40 grid h-14 w-14 place-items-center rounded-full text-gold-foreground shadow-lg md:hidden">
         <Plus className="h-7 w-7" />
       </Link>
     </>

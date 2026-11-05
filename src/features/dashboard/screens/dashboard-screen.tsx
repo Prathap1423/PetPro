@@ -28,10 +28,10 @@ export function DashboardScreen() {
   if (!items.length) {
     return (
       <div className="mx-auto mt-16 max-w-md text-center">
-        <span className="gold-gradient mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full text-gold-foreground"><Gem className="h-8 w-8" /></span>
+        <span className="gold-gradient animate-pop mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full text-gold-foreground"><Gem className="h-8 w-8" /></span>
         <h1 className="font-serif text-2xl font-semibold">Your vault is empty</h1>
         <p className="mt-2 text-muted-foreground">Add your first piece of gold jewellery — snap a photo, enter the weight and price, and your totals appear here.</p>
-        <Link href="/add" className="gold-gradient mt-6 inline-flex h-12 items-center gap-2 rounded-md px-6 font-medium text-gold-foreground shadow"><Plus className="h-5 w-5" />Add Gold</Link>
+        <Link href="/add" className="gold-gradient gold-shine transition active:scale-[0.97] mt-6 inline-flex h-12 items-center gap-2 rounded-md px-6 font-medium text-gold-foreground shadow"><Plus className="h-5 w-5" />Add Gold</Link>
       </div>
     );
   }
@@ -41,10 +41,10 @@ export function DashboardScreen() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="font-serif text-2xl font-semibold">Dashboard</h1>
-        <Link href="/add" className="gold-gradient hidden h-11 items-center gap-2 rounded-md px-4 text-sm font-medium text-gold-foreground shadow md:flex"><Plus className="h-5 w-5" />Add Gold</Link>
+        <Link href="/add" className="gold-gradient gold-shine transition active:scale-[0.97] hidden h-11 items-center gap-2 rounded-md px-4 text-sm font-medium text-gold-foreground shadow md:flex"><Plus className="h-5 w-5" />Add Gold</Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Jewellery items" value={String(summary.itemCount)} icon={<Gem className="h-5 w-5" />} />
         <StatCard label="Total gold weight" value={formatGrams(summary.totalGrams)} sub="net gold" icon={<Scale className="h-5 w-5" />} />
         <StatCard label="In sovereigns (பவுன்)" value={formatSovereigns(summary.totalSovereigns)} sub="1 sovereign = 8 g" icon={<Coins className="h-5 w-5" />} />
@@ -78,7 +78,7 @@ export function DashboardScreen() {
           <CardTitle>Recently added</CardTitle>
           <Link href="/collection" className="text-sm text-gold underline">View all</Link>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <CardContent className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {owned.slice(0, 3).map((i) => <JewelleryCard key={i.id} item={i} rates={rates} />)}
         </CardContent>
       </Card>
