@@ -1,4 +1,5 @@
 import type { Category, JewelleryStatus, Purity } from "@/domain/gold";
+import type { Clarity, Colour, Cut, DiamondType, Lab, SettingMetal, Shape } from "@/domain/diamond";
 
 export interface Jewellery {
   id: string;
@@ -51,4 +52,30 @@ export interface Transaction {
   transaction_date: string;
   amount: number;
   created_at: string;
+}
+
+export interface Diamond {
+  id: string;
+  name: string;
+  diamond_type: DiamondType;
+  purchase_date: string;
+  shop_name: string | null;
+  invoice_number: string | null;
+  carat: number;
+  stone_count: number;
+  shape: Shape;
+  cut: Cut | null;
+  colour: Colour | null;
+  clarity: Clarity | null;
+  certificate_lab: Lab | null;
+  certificate_number: string | null;
+  setting_metal: SettingMetal | null;
+  purchase_price: number;
+  current_value: number | null;
+  value_updated_at: string | null;
+  status: JewelleryStatus;
+  bill_path: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }

@@ -3,19 +3,19 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FileText, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { createJewellery, updateJewellery } from "@/features/jewellery/service";
 import { jewellerySchema } from "@/domain/schemas";
-import { MAX_PHOTOS } from "@/domain/jewellery";
 import {
   CATEGORIES, PURITIES, chargeAmount, estimatePurchaseCost, formatGrams, formatINR, formatSovereigns,
   gramsToSovereigns, netGoldWeight, roundWeight, sovereignsToGrams, type Charge,
 } from "@/domain/gold";
-import { BILL_MAX_BYTES, compressImage, isAllowedBill, isAllowedImage } from "@/lib/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
-import { ImageUploader, type PhotoItem } from "@/features/jewellery/components/image-uploader";
+import { ImageUploader } from "@/features/items/components/image-uploader";
+import { BillPicker } from "@/features/items/components/bill-picker";
+import { useItemFiles } from "@/features/items/use-item-files";
 import type { Jewellery } from "@/domain/types";
 
 interface Props {
@@ -55,15 +55,7 @@ export function JewelleryForm({ existing }: Props) {
   const [taxMode, setTaxMode] = useState<ChargeMode>(item ? "fixed" : "percent");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [compressing, setCompressing] = useState(false);
-
-  const [photos, setPhotos] = useState<PhotoItem[]>(
-    (existing?.images ?? []).filter((i) => i.url).map((i) => ({ key: i.id, url: i.url!, imageId: i.id })),
-  );
-  const [coverKey, setCoverKey] = useState<string | null>(existing?.images.find((i) => i.is_cover)?.id ?? existing?.images[0]?.id ?? null);
-  const [removedIds, setRemovedIds] = useState<string[]>([]);
-  const [bill, setBill] = useState<File | null>(null);
-  const [removeBill, setRemoveBill] = useState(false);
+  const files = useItemFiles(existing && { images: existing.images, hasBill: !!item?.bill_path });
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }));
@@ -88,50 +80,6 @@ export function JewelleryForm({ existing }: Props) {
     const v = num(f.gross_weight);
     if (v > 0) setF((p) => ({ ...p, gross_weight: String(next === "sov" ? gramsToSovereigns(v) : sovereignsToGrams(v)) }));
     setUnit(next);
-  };
-
-  // ----- photos -----
-  const addPhotos = async (files: File[]) => {
-    const valid = files.filter((x) => {
-      if (!isAllowedImage(x)) { toast.error(`${x.name}: only JPG, PNG, WebP or HEIC photos`); return false; }
-      return true;
-    });
-    const room = MAX_PHOTOS - photos.length;
-    if (valid.length > room) toast.error(`You can add up to ${MAX_PHOTOS} photos`);
-    setCompressing(true);
-    try {
-      const added: PhotoItem[] = [];
-      for (const file of valid.slice(0, Math.max(room, 0))) {
-        try {
-          const small = await compressImage(file);
-          added.push({ key: crypto.randomUUID(), url: URL.createObjectURL(small), file: small });
-        } catch {
-          toast.error(`Could not process ${file.name}`);
-        }
-      }
-      setPhotos((p) => [...p, ...added]);
-      setCoverKey((c) => c ?? added[0]?.key ?? null);
-    } finally {
-      setCompressing(false);
-    }
-  };
-  const removePhoto = (key: string) => {
-    const p = photos.find((x) => x.key === key);
-    if (p?.imageId) setRemovedIds((r) => [...r, p.imageId!]);
-    if (p?.file) URL.revokeObjectURL(p.url);
-    const rest = photos.filter((x) => x.key !== key);
-    setPhotos(rest);
-    if (coverKey === key) setCoverKey(rest[0]?.key ?? null);
-  };
-
-  const pickBill = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!isAllowedBill(file)) return void toast.error("Bill must be a PDF or an image");
-    if (file.size > BILL_MAX_BYTES) return void toast.error("Bill must be under 10 MB");
-    setBill(file);
-    setRemoveBill(false);
   };
 
   // ----- submit -----
@@ -162,17 +110,7 @@ export function JewelleryForm({ existing }: Props) {
     setErrors({});
     setBusy(true);
     try {
-      const newPhotos = photos.filter((x) => x.file);
-      const coverPhoto = photos.find((p) => p.key === coverKey);
-      const cover = !coverPhoto ? null
-        : coverPhoto.imageId ? { imageId: coverPhoto.imageId }
-        : { newPhotoIndex: newPhotos.findIndex((x) => x.key === coverKey) };
-      const billFile = bill && bill.type.startsWith("image/") ? await compressImage(bill) : bill;
-
-      const payload = {
-        id: idRef.current, values, newPhotos: newPhotos.map((p) => p.file!), cover,
-        removedImageIds: removedIds, bill: billFile, removeBill,
-      };
+      const payload = { id: idRef.current, values, ...(await files.toSaveInput()) };
       const res = existing ? await updateJewellery(payload) : await createJewellery(payload);
       if (!res.ok) {
         if (res.fieldErrors) setErrors(res.fieldErrors);
@@ -205,7 +143,7 @@ export function JewelleryForm({ existing }: Props) {
       <Card>
         <CardHeader><CardTitle>Photos</CardTitle></CardHeader>
         <CardContent>
-          <ImageUploader photos={photos} coverKey={coverKey} onAdd={addPhotos} onRemove={removePhoto} onCover={setCoverKey} disabled={busy} compressing={compressing} />
+          <ImageUploader photos={files.photos} coverKey={files.coverKey} onAdd={files.addPhotos} onRemove={files.removePhoto} onCover={files.setCoverKey} disabled={busy} compressing={files.compressing} />
         </CardContent>
       </Card>
 
@@ -277,23 +215,14 @@ export function JewelleryForm({ existing }: Props) {
       <Card>
         <CardHeader><CardTitle>Bill & notes</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md glass-control px-4 text-sm font-medium hover:bg-foreground/5">
-              <FileText className="h-5 w-5" />{bill || (item?.bill_path && !removeBill) ? "Replace bill" : "Upload purchase bill (optional)"}
-              <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="sr-only" onChange={pickBill} disabled={busy} />
-            </label>
-            {bill && <p className="text-sm">{bill.name} <button type="button" className="ml-2 text-destructive underline" onClick={() => setBill(null)}>remove</button></p>}
-            {!bill && item?.bill_path && !removeBill && (
-              <p className="text-sm">Bill attached <button type="button" className="ml-2 text-destructive underline" onClick={() => setRemoveBill(true)}>remove</button></p>
-            )}
-          </div>
+          <BillPicker files={files} disabled={busy} />
           <Field label="Notes"><Textarea value={f.notes} onChange={set("notes")} maxLength={2000} /></Field>
         </CardContent>
       </Card>
 
       <div className="sticky bottom-20 z-10 flex gap-2 md:static">
         <Button type="button" variant="outline" size="lg" onClick={() => router.back()} disabled={busy}>Cancel</Button>
-        <Button type="submit" size="lg" className="flex-1" disabled={busy || compressing}>
+        <Button type="submit" size="lg" className="flex-1" disabled={busy || files.compressing}>
           {busy ? <><Loader2 className="h-5 w-5 animate-spin" />Saving…</> : existing ? "Save changes" : "Save to vault"}
         </Button>
       </div>

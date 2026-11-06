@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { getJewelleryById } from "@/features/jewellery/queries";
 import { useVaultData } from "@/hooks/use-vault-data";
 import { JewelleryForm } from "@/features/jewellery/components/jewellery-form";
-import { ItemNotFound } from "@/features/jewellery/components/item-not-found";
+import { ItemNotFound } from "@/features/items/components/item-not-found";
 
 export function EditJewelleryScreen() {
   return <Suspense><EditJewellery /></Suspense>;

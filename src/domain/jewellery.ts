@@ -1,7 +1,7 @@
 /** Business rules for jewellery records. Pure — no storage, no React. */
 import type { Jewellery } from "@/domain/types";
 
-export const MAX_PHOTOS = 10;
+export { MAX_PHOTOS } from "@/domain/items";
 
 type DuplicateKey = Pick<Jewellery, "name" | "purchase_date" | "gross_weight" | "invoice_number">;
 

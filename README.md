@@ -32,13 +32,13 @@ Slate redeploys from `master` (or click **Sync Now** in Slate).
 
 Everything (items, rates, photos, bills) is saved in **Supabase**, so it is the same on every device you sign in on. Each account only ever sees its own data: every table and both file buckets have row level security tied to the signed-in user.
 
-- **Tables:** `jewellery`, `jewellery_images`, `gold_rates`, `transactions` (all with `user_id`).
-- **Files:** private buckets `jewellery-images` and `jewellery-bills`, under `<user id>/<jewellery id>/…`, opened with short-lived signed URLs.
+- **Tables:** gold in `jewellery`, `jewellery_images`, `gold_rates`, `transactions`; diamonds in `diamonds`, `diamond_images` (all with `user_id`).
+- **Files:** private buckets `jewellery-images` and `jewellery-bills`, under `<user id>/<item id>/…` for both gold and diamonds, opened with short-lived signed URLs.
 - **Project settings:** `src/config.ts` holds the project URL and the *publishable* key. Both are public by design; never put the secret / `service_role` key in the code.
 
 ### One-time Supabase setup
 
-1. **SQL Editor → New query:** paste all of `supabase/schema.sql` and run it once.
+1. **SQL Editor → New query:** paste all of `supabase/migrations/001_init.sql` and run it once, then do the same with `002_diamonds.sql`. Each migration runs once, in number order.
 2. **Authentication → URL Configuration:** set **Site URL** to `https://petpro.onslate.in/site/` and add these **Redirect URLs**: `https://petpro.onslate.in/site/**` and `http://localhost:3000/**`.
 3. Open the site, **Create an account**, and confirm the email.
 4. Optional, for a personal vault: **Authentication → Sign In / Providers → turn off "Allow new users to sign up"** once your account exists.
@@ -76,7 +76,9 @@ src/
   app/                  Next.js routes only. Each page.tsx renders one feature screen.
   features/
     dashboard/          screens/ + components/ for the summary page
-    jewellery/          screens/ (collection, detail, add, edit), components/, queries.ts, service.ts
+    jewellery/          gold: screens/ (collection, detail, add, edit), components/, queries.ts, service.ts
+    diamonds/           diamonds: screens/ (list, detail, add, edit), components/, queries.ts, service.ts
+    items/              shared by gold and diamonds: save with rollback, queries, photo/bill hook, gallery, delete
     rates/              screens/, components/, queries.ts, service.ts
     auth/               sign in/up, password reset, AuthGate that guards the app
   domain/               Pure business logic and types: gold.ts (weights, valuation), jewellery.ts (rules), schemas.ts (zod), types.ts
@@ -96,7 +98,7 @@ Dependencies point one way: **app → features → domain / storage**.
 
 ## How it works
 
-- **Business logic** lives in `src/domain/` (pure functions, unit-tested in `tests/`): 1 sovereign = 8 g, net weight, cost estimate, purity-based valuation, inventory totals (only *owned* items count).
+- **Business logic** lives in `src/domain/` (pure functions, unit-tested in `tests/`): 1 sovereign = 8 g, net weight, cost estimate, purity-based valuation, inventory totals (only *owned* items count). Diamonds (`domain/diamond.ts`) have no daily rate, so their current value is the figure you enter, for example a jeweller's quote; pieces without one are left out of the estimate.
 - **Purchase price is never overwritten.** The form shows a cost estimate and a "Use estimate" button; the number saved is always what you typed.
 - **Net weight is derived on save** (`net = gross − non-gold`) and every save is validated with Zod.
 - **Valuation:** uses the rate you saved for that purity; if none, derives it from the 24K rate (22K = 22/24). "Other" purity needs its own rate. Items with no usable rate are excluded from the estimate and flagged.

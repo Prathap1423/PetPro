@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORIES, PURITIES, netGoldWeight, validateWeights } from "@/domain/gold";
+import { CLARITIES, COLOURS, CUTS, DIAMOND_TYPES, LABS, SETTING_METALS, SHAPES } from "@/domain/diamond";
 
 const money = z.coerce.number().finite().min(0).max(99_999_999);
 const optionalText = (max: number) =>
@@ -53,3 +54,35 @@ export const credentialsSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password must be at most 72 characters"),
 });
+
+/** A select left on "Not specified" sends ""; store that as null. */
+const optionalEnum = <T extends readonly [string, ...string[]]>(values: T) =>
+  z.preprocess((v) => (v === "" || v === undefined ? null : v), z.enum(values).nullable());
+
+const purchaseDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date").superRefine((v, ctx) => {
+  const d = new Date(v + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) ctx.addIssue({ code: "custom", message: "Invalid date" });
+  else if (d.getTime() > Date.now() + 36 * 3600 * 1000) ctx.addIssue({ code: "custom", message: "Purchase date cannot be in the future" });
+});
+
+export const diamondSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120),
+  diamond_type: z.enum(DIAMOND_TYPES),
+  purchase_date: purchaseDate,
+  shop_name: optionalText(120),
+  invoice_number: optionalText(60),
+  carat: z.coerce.number().finite().positive("Carat weight must be greater than 0").max(1000),
+  stone_count: z.coerce.number().int("Whole number of stones").min(1).max(1000).default(1),
+  shape: z.enum(SHAPES),
+  cut: optionalEnum(CUTS),
+  colour: optionalEnum(COLOURS),
+  clarity: optionalEnum(CLARITIES),
+  certificate_lab: optionalEnum(LABS),
+  certificate_number: optionalText(40),
+  setting_metal: optionalEnum(SETTING_METALS),
+  purchase_price: money,
+  current_value: z.preprocess((v) => (v === "" || v === null || v === undefined ? null : v), money.nullable()),
+  notes: optionalText(2000),
+});
+
+export type DiamondInput = z.output<typeof diamondSchema>;

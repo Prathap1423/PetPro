@@ -10,9 +10,10 @@ import { useVaultData } from "@/hooks/use-vault-data";
 import { estimateCurrentValue, formatGrams, formatINR, formatSovereigns, gramsToSovereigns, percentChange, rateForPurity } from "@/domain/gold";
 import { formatDate } from "@/lib/utils";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ImageGallery } from "@/features/jewellery/components/image-gallery";
-import { DeleteButton } from "@/features/jewellery/components/delete-button";
-import { ItemNotFound } from "@/features/jewellery/components/item-not-found";
+import { ImageGallery } from "@/features/items/components/image-gallery";
+import { DeleteButton } from "@/features/items/components/delete-button";
+import { deleteJewellery } from "@/features/jewellery/service";
+import { ItemNotFound } from "@/features/items/components/item-not-found";
 
 export function JewelleryDetailScreen() {
   return <Suspense><JewelleryDetail /></Suspense>;
@@ -41,7 +42,7 @@ function JewelleryDetail() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <Link href="/collection" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Collection</Link>
+      <Link href="/collection" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Gold</Link>
       <div className="grid gap-6 md:grid-cols-2">
         <ImageGallery images={images} name={item.name} />
         <div className="space-y-4">
@@ -63,7 +64,7 @@ function JewelleryDetail() {
           <div className="flex flex-wrap gap-2">
             <Link href={`/jewellery/edit?id=${item.id}`} className="inline-flex h-11 items-center gap-2 rounded-md glass-control px-4 text-sm font-medium hover:bg-foreground/5"><Pencil className="h-4 w-4" />Edit</Link>
             {billUrl && <a href={billUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-md glass-control px-4 text-sm font-medium hover:bg-foreground/5"><FileText className="h-4 w-4" />View bill</a>}
-            <DeleteButton id={item.id} name={item.name} />
+            <DeleteButton name={item.name} noun="jewellery" onDelete={() => deleteJewellery(item.id)} backHref="/collection" />
           </div>
         </div>
       </div>
